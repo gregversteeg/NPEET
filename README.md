@@ -32,7 +32,7 @@ my_data = np.genfromtxt('my_file.csv', delimiter=',')  # If you look in the docu
 
 print ee.cmi(my_data[:,[5]], my_data[:,[9]], my_data[:,[15,17]])
 ```
-This prints the mutual information between column 5 and 9, conditioned on columns 15 and 17. There's also a way to return confidence intervals, if you want to use that.
+This prints the mutual information between column 5 and 9, conditioned on columns 15 and 17. You can also use the function shuffle_test to return confidence intervals for any estimator. 
 		
 See documentation for references on all implemented estimators.
 
