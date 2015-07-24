@@ -7,7 +7,7 @@ This package contains Python code implementing several entropy estimation functi
 
 The implementation is very simple. It only requires that numpy/scipy be installed. It includes estimators for entropy, mutual information, and conditional mutual information for both continuous and discrete variables. Additionally it includes a KL Divergence estimator for continuous distributions and mutual information estimator between continuous and discrete variables along with some non-parametric tests for evaluating estimator performance.
 
-The documentation is in npeet_doc.pdf.
+**The main documentation is in <a href="https://github.com/gregversteeg/NPEET/blob/master/npeet_doc.pdf">npeet_doc.pdf</a>.**
 It includes description of functions, references, implementation details, and technical discussion about the difficulties in estimating entropies. The <a href="http://www.isi.edu/~gregv/npeet.tgz">code is available here</a>. It requires <a href="http://www.scipy.org">scipy</a> 0.12 or greater. This package is mainly geared to estimating information-theoretic quantities for continuous variables in a non-parametric way. If your primary interest is in discrete entropy estimation, particularly with undersampled data, please see <a href="http://thoth-python.org">this package</a>.</p> 
 
 Example installation and usage:
