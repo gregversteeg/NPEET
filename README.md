@@ -21,6 +21,18 @@ git clone https://github.com/gregversteeg/NPEET.git
 >>> ee.mi(x,y)
 Out: 0.168
 ```
+
+Another example:
+
+```python
+import numpy as np
+import entropy_estimators as ee
+
+my_data = np.genfromtxt('my_file.csv', delimiter=',')  # If you look in the documentation, there is a way to skip header rows and other things
+
+print ee.cmi(my_data[:,[5]], my_data[:,[9]], my_data[:,[15,17]])
+```
+This prints the mutual information between column 5 and 9, conditioned on columns 15 and 17. There's also a way to return confidence intervals, if you want to use that.
 		
 See documentation for references on all implemented estimators.
 
