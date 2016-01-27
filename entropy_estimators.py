@@ -136,7 +136,7 @@ def micd(x,y,k=3,base=2,warning=True):
       mi -= word_dict[yval]*entropy(xgiveny,k,base)
     else:
       if warning:
-        print "Warning, after conditioning, on y=",yval," insufficient data. Assuming maximal entropy in this case."
+        print("Warning, after conditioning, on y=",yval," insufficient data. Assuming maximal entropy in this case.")
       mi -= word_dict[yval]*overallentropy
   return mi #units already applied
 
@@ -186,4 +186,4 @@ def zip2(*args):
   return [sum(sublist,[]) for sublist in zip(*args)]
 
 if __name__ == "__main__":
-  print "NPEET: Non-parametric entropy estimation toolbox. See readme.pdf for details on usage."
+  print("NPEET: Non-parametric entropy estimation toolbox. See readme.pdf for details on usage.")
