@@ -1,4 +1,4 @@
-# python2.7
+#!/bin/env python
 # Testing the NPEET estimators
 
 import entropy_estimators as ee

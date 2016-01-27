@@ -1,7 +1,7 @@
-#  python2.7
-#  Written by Greg Ver Steeg
-#  See readme.pdf for documentation
-#  Or go to http://www.isi.edu/~gregv/npeet.html
+#!/bin/env python
+# Written by Greg Ver Steeg
+# See readme.pdf for documentation
+# Or go to http://www.isi.edu/~gregv/npeet.html
 
 import scipy.spatial as ss
 from scipy.special import digamma
@@ -11,7 +11,7 @@ import numpy as np
 import random
 
 
-#  CONTINUOUS ESTIMATORS
+# CONTINUOUS ESTIMATORS
 
 def entropy(x, k=3, base=2):
     """ The classic K-L k-nearest neighbor continuous entropy estimator
