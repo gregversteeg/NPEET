@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 # Written by Greg Ver Steeg
 # See readme.pdf for documentation
 # Or go to http://www.isi.edu/~gregv/npeet.html
@@ -9,7 +9,6 @@ from math import log
 import numpy.random as nr
 import numpy as np
 import random
-
 
 # CONTINUOUS ESTIMATORS
 
@@ -28,6 +27,28 @@ def entropy(x, k=3, base=2):
     const = digamma(N) - digamma(k) + d * log(2)
     return (const + d * np.mean(map(log, nn))) / log(base)
 
+def centropy(x, y, k=3, base=2):
+  """ The classic K-L k-nearest neighbor continuous entropy estimator for the
+      entropy of X conditioned on Y.
+  """
+  hxy = entropy([xi + yi for (xi, yi) in zip(x, y)], k, base)
+  hy = entropy(y, k, base)
+  return hxy - hy
+
+def column(xs, i):
+  return [[x[i]] for x in xs]
+
+def tc(xs, k=3, base=2):
+  xis = [entropy(column(xs, i), k, base) for i in range(0, len(xs[0]))]
+  return np.sum(xis) - entropy(xs, k, base)
+
+def ctc(xs, y, k=3, base=2):
+  xis = [centropy(column(xs, i), y, k, base) for i in range(0, len(xs[0]))]
+  return np.sum(xis) - centropy(xs, y, k, base)
+
+def corex(xs, ys, k=3, base=2):
+  cxis = [mi(column(xs, i), ys, k, base) for i in range(0, len(xs[0]))]
+  return np.sum(cxis) - mi(xs, ys, k, base)
 
 def mi(x, y, k=3, base=2):
     """ Mutual information of x and y
@@ -93,12 +114,11 @@ def entropyd(sx, base=2):
     return entropyfromprobs(hist(sx), base=base)
 
 
-def midd(x, y):
+def midd(x, y, base=2):
     """ Discrete mutual information estimator
         Given a list of samples which can be any hashable object
     """
-    return -entropyd(zip(x, y)) + entropyd(x) + entropyd(y)
-
+    return -entropyd(zip(x, y), base) + entropyd(x, base) + entropyd(y, base)
 
 def cmidd(x, y, z):
     """ Discrete mutual information estimator
@@ -106,11 +126,31 @@ def cmidd(x, y, z):
     """
     return entropyd(zip(y, z)) + entropyd(zip(x, z)) - entropyd(zip(x, y, z)) - entropyd(z)
 
+def centropyd(x, y, base=2):
+  """ The classic K-L k-nearest neighbor continuous entropy estimator for the
+      entropy of X conditioned on Y.
+  """
+  return entropyd(zip(x, y), base) - entropyd(y, base)
+
+def tcd(xs, base=2):
+  xis = [entropyd(discretize(column(xs, i)), base) for i in range(0, len(xs[0]))]
+  hx = entropyd(xs, base)
+  return np.sum(xis) - hx
+
+def ctcd(xs, y, base=2):
+  xis = [centropyd(discretize(column(xs, i)), y, base) for i in range(0, len(xs[0]))]
+  return np.sum(xis) - centropyd(xs, y, base)
+
+def corexd(xs, ys, base=2):
+  cxis = [midd(discretize(column(xs, i)), ys, base) for i in range(0, len(xs[0]))]
+  return np.sum(cxis) - midd(xs, ys, base)
 
 def hist(sx):
     # Histogram from list of samples
     d = dict()
     for s in sx:
+        if type(s) == list:
+          s = tuple(s)
         d[s] = d.get(s, 0) + 1
     return map(lambda z: float(z) / len(sx), d.values())
 
@@ -136,6 +176,9 @@ def micd(x, y, k=3, base=2, warning=True):
 
     n = len(y)
     word_dict = dict()
+    for i in range(len(y)):
+      if type(y[i]) == list:
+        y[i] = tuple(y[i])
     for sample in y:
         word_dict[sample] = word_dict.get(sample, 0) + 1. / n
     yvals = list(set(word_dict.keys()))
@@ -151,12 +194,38 @@ def micd(x, y, k=3, base=2, warning=True):
             mi -= word_dict[yval] * overallentropy
     return mi  # units already applied
 
+def midc(x, y, k=3, base=2, warning=True):
+  return micd(y, x, k, base, warning)
+
+def centropydc(x, y, k=3, base=2, warning=True):
+  return entropyd(x, base) - midc(x, y, k, base, warning)
+
+def centropycd(x, y, k=3, base=2, warning=True):
+  return entropy(x, k, base) - micd(x, y, k, base, warning)
+
+def ctcdc(xs, y, k=3, base=2, warning=True):
+  xis = [centropydc(discretize(column(xs, i)), y, k, base, warning) for i in range(0, len(xs[0]))]
+  return np.sum(xis) - centropydc(xs, y, k, base, warning)
+
+def ctccd(xs, y, k=3, base=2, warning=True):
+  xis = [centropycd(discretize(column(xs, i)), y, k, base, warning) for i in range(0, len(xs[0]))]
+  return np.sum(xis) - centropycd(xs, y, k, base, warning)
+
+def corexcd(xs, ys, k=3, base=2, warning=True):
+  cxis = [micd(column(xs, i), ys, k, base, warning) for i in range(0, len(xs[0]))]
+  return np.sum(cxis) - micd(xs, ys, k, base, warning)
+
+def corexdc(xs, ys, k=3, base=2, warning=True):
+  #cxis = [midc(column(xs, i), ys, k, base, warning) for i in range(0, len(xs[0]))]
+  #joint = midc(xs, ys, k, base, warning)
+  #return np.sum(cxis) - joint
+  return tcd(xs, base) - ctcdc(xs, ys, k, base, warning)
 
 # UTILITY FUNCTIONS
 def vectorize(scalarlist):
     """ Turn a list of scalars into a list of one-d vectors
     """
-    return [(x, ) for x in scalarlist]
+    return [[x] for x in scalarlist]
 
 
 def shuffle_test(measure, x, y, z=False, ns=200, ci=0.95, **kwargs):
@@ -199,6 +268,15 @@ def zip2(*args):
     # zip2(x, y) takes the lists of vectors and makes it a list of vectors in a joint space
     # E.g. zip2([[1], [2], [3]], [[4], [5], [6]]) = [[1, 4], [2, 5], [3, 6]]
     return [sum(sublist, []) for sublist in zip(*args)]
+
+def discretize(xs):
+    def discretize_one(x):
+        if len(x) > 1:
+            return tuple(x)
+        else:
+            return x[0]
+    # discretize(xs) takes a list of vectors and makes it a list of tuples or scalars
+    return [discretize_one(x) for x in xs]
 
 if __name__ == "__main__":
     print("NPEET: Non-parametric entropy estimation toolbox. See readme.pdf for details on usage.")
