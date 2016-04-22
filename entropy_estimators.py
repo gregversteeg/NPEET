@@ -133,19 +133,20 @@ def centropyd(x, y, base=2):
   return entropyd(zip(x, y), base) - entropyd(y, base)
 
 def tcd(xs, base=2):
-  xis = [entropyd(discretize(column(xs, i)), base) for i in range(0, len(xs[0]))]
+  xis = [entropyd(column(xs, i), base) for i in range(0, len(xs[0]))]
   hx = entropyd(xs, base)
   return np.sum(xis) - hx
 
 def ctcd(xs, y, base=2):
-  xis = [centropyd(discretize(column(xs, i)), y, base) for i in range(0, len(xs[0]))]
+  xis = [centropyd(column(xs, i), y, base) for i in range(0, len(xs[0]))]
   return np.sum(xis) - centropyd(xs, y, base)
 
 def corexd(xs, ys, base=2):
-  cxis = [midd(discretize(column(xs, i)), ys, base) for i in range(0, len(xs[0]))]
+  cxis = [midd(column(xs, i), ys, base) for i in range(0, len(xs[0]))]
   return np.sum(cxis) - midd(xs, ys, base)
 
 def hist(sx):
+    sx = discretize(sx)
     # Histogram from list of samples
     d = dict()
     for s in sx:
@@ -204,11 +205,11 @@ def centropycd(x, y, k=3, base=2, warning=True):
   return entropy(x, k, base) - micd(x, y, k, base, warning)
 
 def ctcdc(xs, y, k=3, base=2, warning=True):
-  xis = [centropydc(discretize(column(xs, i)), y, k, base, warning) for i in range(0, len(xs[0]))]
+  xis = [centropydc(column(xs, i), y, k, base, warning) for i in range(0, len(xs[0]))]
   return np.sum(xis) - centropydc(xs, y, k, base, warning)
 
 def ctccd(xs, y, k=3, base=2, warning=True):
-  xis = [centropycd(discretize(column(xs, i)), y, k, base, warning) for i in range(0, len(xs[0]))]
+  xis = [centropycd(column(xs, i), y, k, base, warning) for i in range(0, len(xs[0]))]
   return np.sum(xis) - centropycd(xs, y, k, base, warning)
 
 def corexcd(xs, ys, k=3, base=2, warning=True):
