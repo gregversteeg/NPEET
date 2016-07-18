@@ -193,7 +193,7 @@ def micd(x, y, k=3, base=2, warning=True):
             if warning:
                 print("Warning, after conditioning, on y=", yval, " insufficient data. Assuming maximal entropy in this case.")
             mi -= word_dict[yval] * overallentropy
-    return mi  # units already applied
+    return np.abs(mi)  # units already applied
 
 def midc(x, y, k=3, base=2, warning=True):
   return micd(y, x, k, base, warning)
