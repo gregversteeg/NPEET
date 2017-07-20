@@ -55,4 +55,12 @@ See documentation for references on all implemented estimators.
 				http://arxiv.org/abs/1110.2724 
 				Information Transfer in Social Media
 				WWW, 2012.
-				
+
+The non-parametric estimators actually fare poorly for variables with strong relationships. See the following paper and the improved code available at https://github.com/BiuBiuBiLL/NPEET_LNC
+
+				Shuyang Gao, Greg Ver Steeg and Aram Galstyan 
+				http://arxiv.org/abs/1411.2003
+				Efficient Estimation of Mutual Information for Strongly Dependent Variables
+				AISTATS, 2015.
+
+
