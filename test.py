@@ -1,7 +1,7 @@
 #!/bin/env python
 # Testing the NPEET estimators
 
-import entropy_estimators as ee
+from npeet import entropy_estimators as ee
 from math import log, pi
 import numpy as np
 import numpy.random as nr
