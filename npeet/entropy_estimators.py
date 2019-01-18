@@ -6,9 +6,10 @@
 import scipy.spatial as ss
 from scipy.special import digamma
 from math import log
-import numpy.random as nr
 import numpy as np
 import random
+import warnings
+
 
 # CONTINUOUS ESTIMATORS
 
@@ -18,73 +19,74 @@ def entropy(x, k=3, base=2):
         if x is a one-dimensional scalar and we have four samples
     """
     assert k <= len(x) - 1, "Set k smaller than num. samples - 1"
-    d = len(x[0])
-    N = len(x)
-    intens = 1e-10  # small noise to break degeneracy, see doc.
-    x = [list(p + intens * nr.rand(len(x[0]))) for p in x]
+    x = np.asarray(x)
+    n_elements, n_features = x.shape
+    x = add_noise(x)
     tree = ss.cKDTree(x)
-    nn = [tree.query(point, k + 1, p=float('inf'))[0][k] for point in x]
-    const = digamma(N) - digamma(k) + d * log(2)
-    return (const + d * np.mean(map(log, nn))) / log(base)
+    nn = query_neighbors(tree, x, k)
+    const = digamma(n_elements) - digamma(k) + n_features * log(2)
+    return (const + n_features * np.log(nn).mean()) / log(base)
+
 
 def centropy(x, y, k=3, base=2):
-  """ The classic K-L k-nearest neighbor continuous entropy estimator for the
-      entropy of X conditioned on Y.
-  """
-  hxy = entropy([xi + yi for (xi, yi) in zip(x, y)], k, base)
-  hy = entropy(y, k, base)
-  return hxy - hy
+    """ The classic K-L k-nearest neighbor continuous entropy estimator for the
+        entropy of X conditioned on Y.
+    """
+    xy = np.c_[x, y]
+    entropy_union_xy = entropy(xy, k=k, base=base)
+    entropy_y = entropy(y, k=k, base=base)
+    return entropy_union_xy - entropy_y
 
-def column(xs, i):
-  return [[x[i]] for x in xs]
 
 def tc(xs, k=3, base=2):
-  xis = [entropy(column(xs, i), k, base) for i in range(0, len(xs[0]))]
-  return np.sum(xis) - entropy(xs, k, base)
+    xs_columns = np.expand_dims(xs, axis=0).T
+    entropy_features = [entropy(col, k=k, base=base) for col in xs_columns]
+    return np.sum(entropy_features) - entropy(xs, k, base)
+
 
 def ctc(xs, y, k=3, base=2):
-  xis = [centropy(column(xs, i), y, k, base) for i in range(0, len(xs[0]))]
-  return np.sum(xis) - centropy(xs, y, k, base)
+    xs_columns = np.expand_dims(xs, axis=0).T
+    centropy_features = [centropy(col, y, k=k, base=base) for col in xs_columns]
+    return np.sum(centropy_features) - centropy(xs, y, k, base)
+
 
 def corex(xs, ys, k=3, base=2):
-  cxis = [mi(column(xs, i), ys, k, base) for i in range(0, len(xs[0]))]
-  return np.sum(cxis) - mi(xs, ys, k, base)
+    xs_columns = np.expand_dims(xs, axis=0).T
+    cmi_features = [mi(col, ys, k=k, base=base) for col in xs_columns]
+    return np.sum(cmi_features) - mi(xs, ys, k=k, base=base)
 
-def mi(x, y, k=3, base=2):
-    """ Mutual information of x and y
+
+def mi(x, y, z=None, k=3, base=2):
+    """ Mutual information of x and y (conditioned on z if z is not None)
         x, y should be a list of vectors, e.g. x = [[1.3], [3.7], [5.1], [2.4]]
         if x is a one-dimensional scalar and we have four samples
     """
-    assert len(x) == len(y), "Lists should have same length"
+    assert len(x) == len(y), "Arrays should have same length"
     assert k <= len(x) - 1, "Set k smaller than num. samples - 1"
-    intens = 1e-10  # small noise to break degeneracy, see doc.
-    x = [list(p + intens * nr.rand(len(x[0]))) for p in x]
-    y = [list(p + intens * nr.rand(len(y[0]))) for p in y]
-    points = zip2(x, y)
+    x, y = np.asarray(x), np.asarray(y)
+    x = add_noise(x)
+    y = add_noise(y)
+    points = [x, y]
+    if z is not None:
+        points.append(z)
+    points = np.hstack(points)
     # Find nearest neighbors in joint space, p=inf means max-norm
     tree = ss.cKDTree(points)
-    dvec = [tree.query(point, k + 1, p=float('inf'))[0][k] for point in points]
-    a, b, c, d = avgdigamma(x, dvec), avgdigamma(y, dvec), digamma(k), digamma(len(x))
+    dvec = query_neighbors(tree, points, k)
+    if z is None:
+        a, b, c, d = avgdigamma(x, dvec), avgdigamma(y, dvec), digamma(k), digamma(len(x))
+    else:
+        xz = np.c_[x, z]
+        yz = np.c_[y, z]
+        a, b, c, d = avgdigamma(xz, dvec), avgdigamma(yz, dvec), avgdigamma(z, dvec), digamma(k)
     return (-a - b + c + d) / log(base)
 
 
 def cmi(x, y, z, k=3, base=2):
     """ Mutual information of x and y, conditioned on z
-        x, y, z should be a list of vectors, e.g. x = [[1.3], [3.7], [5.1], [2.4]]
-        if x is a one-dimensional scalar and we have four samples
+        Legacy function. Use mi(x, y, z) directly.
     """
-    assert len(x) == len(y), "Lists should have same length"
-    assert k <= len(x) - 1, "Set k smaller than num. samples - 1"
-    intens = 1e-10  # small noise to break degeneracy, see doc.
-    x = [list(p + intens * nr.rand(len(x[0]))) for p in x]
-    y = [list(p + intens * nr.rand(len(y[0]))) for p in y]
-    z = [list(p + intens * nr.rand(len(z[0]))) for p in z]
-    points = zip2(x, y, z)
-    # Find nearest neighbors in joint space, p=inf means max-norm
-    tree = ss.cKDTree(points)
-    dvec = [tree.query(point, k + 1, p=float('inf'))[0][k] for point in points]
-    a, b, c, d = avgdigamma(zip2(x, z), dvec), avgdigamma(zip2(y, z), dvec), avgdigamma(z, dvec), digamma(k)
-    return (-a - b + c + d) / log(base)
+    return mi(x, y, z=z, k=k, base=base)
 
 
 def kldiv(x, xp, k=3, base=2):
@@ -92,8 +94,7 @@ def kldiv(x, xp, k=3, base=2):
         x, xp should be a list of vectors, e.g. x = [[1.3], [3.7], [5.1], [2.4]]
         if x is a one-dimensional scalar and we have four samples
     """
-    assert k <= len(x) - 1, "Set k smaller than num. samples - 1"
-    assert k <= len(xp) - 1, "Set k smaller than num. samples - 1"
+    assert k < min(len(x), len(xp)), "Set k smaller than num. samples - 1"
     assert len(x[0]) == len(xp[0]), "Two distributions must have same dim."
     d = len(x[0])
     n = len(x)
@@ -101,133 +102,146 @@ def kldiv(x, xp, k=3, base=2):
     const = log(m) - log(n - 1)
     tree = ss.cKDTree(x)
     treep = ss.cKDTree(xp)
-    nn = [tree.query(point, k + 1, p=float('inf'))[0][k] for point in x]
-    nnp = [treep.query(point, k, p=float('inf'))[0][k - 1] for point in x]
-    return (const + d * np.mean(map(log, nnp)) - d * np.mean(map(log, nn))) / log(base)
+    nn = query_neighbors(tree, x, k)
+    nnp = query_neighbors(treep, x, k - 1)
+    return (const + d * (np.log(nnp).mean() - np.log(nn).mean())) / log(base)
 
 
 # DISCRETE ESTIMATORS
 def entropyd(sx, base=2):
     """ Discrete entropy estimator
-        Given a list of samples which can be any hashable object
+        sx is a list of samples
     """
-    return entropyfromprobs(hist(sx), base=base)
+    unique, count = np.unique(sx, return_counts=True, axis=0)
+    proba = count / len(sx)
+    return np.sum(proba * np.log(1. / proba)) / log(base)
 
 
 def midd(x, y, base=2):
     """ Discrete mutual information estimator
         Given a list of samples which can be any hashable object
     """
-    return -entropyd(zip(x, y), base) + entropyd(x, base) + entropyd(y, base)
+    assert len(x) == len(y), "Arrays should have same length"
+    return entropyd(x, base) - centropyd(x, y, base)
 
-def cmidd(x, y, z):
+
+def cmidd(x, y, z, base=2):
     """ Discrete mutual information estimator
         Given a list of samples which can be any hashable object
     """
-    return entropyd(zip(y, z)) + entropyd(zip(x, z)) - entropyd(zip(x, y, z)) - entropyd(z)
+    assert len(x) == len(y) == len(z), "Arrays should have same length"
+    xz = np.c_[x, z]
+    yz = np.c_[y, z]
+    xyz = np.c_[x, y, z]
+    return entropyd(xz, base) + entropyd(yz, base) - entropyd(xyz, base) - entropyd(z, base)
+
 
 def centropyd(x, y, base=2):
-  """ The classic K-L k-nearest neighbor continuous entropy estimator for the
-      entropy of X conditioned on Y.
-  """
-  return entropyd(zip(x, y), base) - entropyd(y, base)
+    """ The classic K-L k-nearest neighbor continuous entropy estimator for the
+        entropy of X conditioned on Y.
+    """
+    xy = np.c_[x, y]
+    return entropyd(xy, base) - entropyd(y, base)
+
 
 def tcd(xs, base=2):
-  xis = [entropyd(column(xs, i), base) for i in range(0, len(xs[0]))]
-  hx = entropyd(xs, base)
-  return np.sum(xis) - hx
+    xs_columns = np.expand_dims(xs, axis=0).T
+    entropy_features = [entropyd(col, base=base) for col in xs_columns]
+    return np.sum(entropy_features) - entropyd(xs, base)
+
 
 def ctcd(xs, y, base=2):
-  xis = [centropyd(column(xs, i), y, base) for i in range(0, len(xs[0]))]
-  return np.sum(xis) - centropyd(xs, y, base)
+    xs_columns = np.expand_dims(xs, axis=0).T
+    centropy_features = [centropyd(col, y, base=base) for col in xs_columns]
+    return np.sum(centropy_features) - centropyd(xs, y, base)
+
 
 def corexd(xs, ys, base=2):
-  cxis = [midd(column(xs, i), ys, base) for i in range(0, len(xs[0]))]
-  return np.sum(cxis) - midd(xs, ys, base)
-
-def hist(sx):
-    sx = discretize(sx)
-    # Histogram from list of samples
-    d = dict()
-    for s in sx:
-        if type(s) == list:
-          s = tuple(s)
-        d[s] = d.get(s, 0) + 1
-    return map(lambda z: float(z) / len(sx), d.values())
-
-
-def entropyfromprobs(probs, base=2):
-    # Turn a normalized list of probabilities of discrete outcomes into entropy (base 2)
-    return -sum(map(elog, probs)) / log(base)
-
-
-def elog(x):
-    # for entropy, 0 log 0 = 0. but we get an error for putting log 0
-    if x <= 0. or x >= 1.:
-        return 0
-    else:
-        return x * log(x)
+    xs_columns = np.expand_dims(xs, axis=0).T
+    cmi_features = [midd(col, ys, base=base) for col in xs_columns]
+    return np.sum(cmi_features) - midd(xs, ys, base)
 
 
 # MIXED ESTIMATORS
 def micd(x, y, k=3, base=2, warning=True):
     """ If x is continuous and y is discrete, compute mutual information
     """
-    overallentropy = entropy(x, k, base)
+    assert len(x) == len(y), "Arrays should have same length"
+    entropy_x = entropy(x, k, base)
 
-    n = len(y)
-    word_dict = dict()
-    for i in range(len(y)):
-      if type(y[i]) == list:
-        y[i] = tuple(y[i])
-    for sample in y:
-        word_dict[sample] = word_dict.get(sample, 0) + 1. / n
-    yvals = list(set(word_dict.keys()))
+    y_unique, y_count = np.unique(y, return_counts=True, axis=0)
+    y_proba = y_count / len(y)
 
-    mi = overallentropy
-    for yval in yvals:
-        xgiveny = [x[i] for i in range(n) if y[i] == yval]
-        if k <= len(xgiveny) - 1:
-            mi -= word_dict[yval] * entropy(xgiveny, k, base)
+    entropy_x_given_y = 0.
+    for yval, py in zip(y_unique, y_proba):
+        x_given_y = x[(y == yval).all(axis=1)]
+        if k <= len(x_given_y) - 1:
+            entropy_x_given_y += py * entropy(x_given_y, k, base)
         else:
             if warning:
-                print("Warning, after conditioning, on y=", yval, " insufficient data. Assuming maximal entropy in this case.")
-            mi -= word_dict[yval] * overallentropy
-    return np.abs(mi)  # units already applied
+                warnings.warn("Warning, after conditioning, on y={yval} insufficient data. "
+                              "Assuming maximal entropy in this case.".format(yval=yval))
+            entropy_x_given_y += py * entropy_x
+    return abs(entropy_x - entropy_x_given_y)  # units already applied
+
 
 def midc(x, y, k=3, base=2, warning=True):
-  return micd(y, x, k, base, warning)
+    return micd(y, x, k, base, warning)
 
-def centropydc(x, y, k=3, base=2, warning=True):
-  return entropyd(x, base) - midc(x, y, k, base, warning)
 
 def centropycd(x, y, k=3, base=2, warning=True):
-  return entropy(x, k, base) - micd(x, y, k, base, warning)
+    return entropy(x, base) - micd(x, y, k, base, warning)
+
+
+def centropydc(x, y, k=3, base=2, warning=True):
+    return centropycd(y, x, k=k, base=base, warning=warning)
+
 
 def ctcdc(xs, y, k=3, base=2, warning=True):
-  xis = [centropydc(column(xs, i), y, k, base, warning) for i in range(0, len(xs[0]))]
-  return np.sum(xis) - centropydc(xs, y, k, base, warning)
+    xs_columns = np.expand_dims(xs, axis=0).T
+    centropy_features = [centropydc(col, y, k=k, base=base, warning=warning) for col in xs_columns]
+    return np.sum(centropy_features) - centropydc(xs, y, k, base, warning)
+
 
 def ctccd(xs, y, k=3, base=2, warning=True):
-  xis = [centropycd(column(xs, i), y, k, base, warning) for i in range(0, len(xs[0]))]
-  return np.sum(xis) - centropycd(xs, y, k, base, warning)
+    return ctcdc(y, xs, k=k, base=base, warning=warning)
+
 
 def corexcd(xs, ys, k=3, base=2, warning=True):
-  cxis = [micd(column(xs, i), ys, k, base, warning) for i in range(0, len(xs[0]))]
-  return np.sum(cxis) - micd(xs, ys, k, base, warning)
+    return corexdc(ys, xs, k=k, base=base, warning=warning)
+
 
 def corexdc(xs, ys, k=3, base=2, warning=True):
-  #cxis = [midc(column(xs, i), ys, k, base, warning) for i in range(0, len(xs[0]))]
-  #joint = midc(xs, ys, k, base, warning)
-  #return np.sum(cxis) - joint
-  return tcd(xs, base) - ctcdc(xs, ys, k, base, warning)
+    return tcd(xs, base) - ctcdc(xs, ys, k, base, warning)
+
 
 # UTILITY FUNCTIONS
-def vectorize(scalarlist):
-    """ Turn a list of scalars into a list of one-d vectors
-    """
-    return [[x] for x in scalarlist]
 
+def add_noise(x, intens=1e-10):
+    # small noise to break degeneracy, see doc.
+    return x + intens * np.random.random_sample(x.shape)
+
+
+def query_neighbors(tree, x, k):
+    return tree.query(x, k=k + 1, p=float('inf'), n_jobs=-1)[0][:, k]
+
+
+def avgdigamma(points, dvec):
+    # This part finds number of neighbors in some radius in the marginal space
+    # returns expectation value of <psi(nx)>
+    n_elements = len(points)
+    tree = ss.cKDTree(points)
+    avg = 0.
+    dvec = dvec - 1e-15
+    for point, dist in zip(points, dvec):
+        # subtlety, we don't include the boundary point,
+        # but we are implicitly adding 1 to kraskov def bc center point is included
+        num_points = len(tree.query_ball_point(point, dist, p=float('inf')))
+        avg += digamma(num_points) / n_elements
+    return avg
+
+
+# TESTS
 
 def shuffle_test(measure, x, y, z=False, ns=200, ci=0.95, **kwargs):
     """ Shuffle test
@@ -236,48 +250,18 @@ def shuffle_test(measure, x, y, z=False, ns=200, ci=0.95, **kwargs):
         'measure' could me mi, cmi, e.g. Keyword arguments can be passed.
         Mutual information and CMI should have a mean near zero.
     """
-    xp = x[:]  # A copy that we can shuffle
+    x_clone = np.copy(x)  # A copy that we can shuffle
     outputs = []
     for i in range(ns):
-        random.shuffle(xp)
+        np.random.shuffle(x_clone)
         if z:
-            outputs.append(measure(xp, y, z, **kwargs))
+            outputs.append(measure(x_clone, y, z, **kwargs))
         else:
-            outputs.append(measure(xp, y, **kwargs))
+            outputs.append(measure(x_clone, y, **kwargs))
     outputs.sort()
     return np.mean(outputs), (outputs[int((1. - ci) / 2 * ns)], outputs[int((1. + ci) / 2 * ns)])
 
 
-# INTERNAL FUNCTIONS
-
-def avgdigamma(points, dvec):
-    # This part finds number of neighbors in some radius in the marginal space
-    # returns expectation value of <psi(nx)>
-    N = len(points)
-    tree = ss.cKDTree(points)
-    avg = 0.
-    for i in range(N):
-        dist = dvec[i]
-        # subtlety, we don't include the boundary point,
-        # but we are implicitly adding 1 to kraskov def bc center point is included
-        num_points = len(tree.query_ball_point(points[i], dist - 1e-15, p=float('inf')))
-        avg += digamma(num_points) / N
-    return avg
-
-
-def zip2(*args):
-    # zip2(x, y) takes the lists of vectors and makes it a list of vectors in a joint space
-    # E.g. zip2([[1], [2], [3]], [[4], [5], [6]]) = [[1, 4], [2, 5], [3, 6]]
-    return [sum(sublist, []) for sublist in zip(*args)]
-
-def discretize(xs):
-    def discretize_one(x):
-        if len(x) > 1:
-            return tuple(x)
-        else:
-            return x[0]
-    # discretize(xs) takes a list of vectors and makes it a list of tuples or scalars
-    return [discretize_one(x) for x in xs]
-
 if __name__ == "__main__":
-    print("NPEET: Non-parametric entropy estimation toolbox. See readme.pdf for details on usage.")
+    print("MI between two independent continuous random variables X and Y:")
+    print(mi(np.random.rand(1000, 10), np.random.rand(1000, 3), base=2))

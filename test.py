@@ -127,3 +127,35 @@ print('result:', ee.kldiv(sample1, sample2))
 print("should be infinite for totally disjoint distributions (but this estimator has an upper bound like log(dist) between disjoint prob. masses)")
 sample2 = [[3 + 2 * random.random()] for i in range(300)]
 print('result:', ee.kldiv(sample1, sample2))
+
+
+def test_discrete(size=1000, y_func=lambda x: x**2):
+    print("\nTest discrete.")
+    from collections import defaultdict
+    information = defaultdict(list)
+    y_entropy = defaultdict(list)
+    x_entropy = []
+    for trial in range(10):
+        x = np.random.randint(low=0, high=10, size=size)
+
+        y_random = np.random.randint(low=53, high=53 + 5, size=size)
+        y_deterministic = y_func(x)
+        noise = np.random.randint(low=0, high=10, size=size)
+        y_noisy = y_deterministic + noise
+
+        information['random'].append(ee.midd(x, y_random))
+        information['deterministic'].append(ee.midd(x, y_deterministic))
+        information['noisy'].append(ee.midd(x, y_noisy))
+
+        x_entropy.append(ee.entropyd(x))
+        y_entropy['random'].append(ee.entropyd(y_random))
+        y_entropy['deterministic'].append(ee.entropyd(y_deterministic))
+        y_entropy['noisy'].append(ee.entropyd(y_noisy))
+    x_entropy = np.mean(x_entropy)
+    for experiment_name in information.keys():
+        max_information = min(x_entropy, np.mean(y_entropy[experiment_name]))
+        print(f"{experiment_name}: I(X; Y) = {np.mean(information[experiment_name]):.4f} "
+              f"± {np.std(information[experiment_name]):.4f} (maximum possible {max_information:.4f})")
+
+
+test_discrete()
