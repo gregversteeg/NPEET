@@ -113,7 +113,10 @@ def entropyd(sx, base=2):
         sx is a list of samples
     """
     unique, count = np.unique(sx, return_counts=True, axis=0)
-    proba = count / len(sx)
+    # Convert to float as otherwise integer division results in all 0 for proba.
+    proba = count.astype(float) / len(sx)
+    # Avoid 0 division; remove probabilities == 0.0 (removing them does not change the entropy estimate as 0 * log(1/0) = 0.
+    proba = proba[proba > 0.0]
     return np.sum(proba * np.log(1. / proba)) / log(base)
 
 
