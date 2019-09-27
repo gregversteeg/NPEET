@@ -3,13 +3,12 @@
 # See readme.pdf for documentation
 # Or go to http://www.isi.edu/~gregv/npeet.html
 
-import scipy.spatial as ss
-from scipy.special import digamma
-from math import log
-import numpy as np
-import random
 import warnings
 
+import numpy as np
+from numpy import log
+from scipy.special import digamma
+from sklearn.neighbors import BallTree, KDTree
 
 # CONTINUOUS ESTIMATORS
 
@@ -22,7 +21,7 @@ def entropy(x, k=3, base=2):
     x = np.asarray(x)
     n_elements, n_features = x.shape
     x = add_noise(x)
-    tree = ss.cKDTree(x)
+    tree = build_tree(x)
     nn = query_neighbors(tree, x, k)
     const = digamma(n_elements) - digamma(k) + n_features * log(2)
     return (const + n_features * np.log(nn).mean()) / log(base)
@@ -46,7 +45,8 @@ def tc(xs, k=3, base=2):
 
 def ctc(xs, y, k=3, base=2):
     xs_columns = np.expand_dims(xs, axis=0).T
-    centropy_features = [centropy(col, y, k=k, base=base) for col in xs_columns]
+    centropy_features = [centropy(col, y, k=k, base=base)
+                         for col in xs_columns]
     return np.sum(centropy_features) - centropy(xs, y, k, base)
 
 
@@ -71,14 +71,16 @@ def mi(x, y, z=None, k=3, base=2):
         points.append(z)
     points = np.hstack(points)
     # Find nearest neighbors in joint space, p=inf means max-norm
-    tree = ss.cKDTree(points)
+    tree = build_tree(points)
     dvec = query_neighbors(tree, points, k)
     if z is None:
-        a, b, c, d = avgdigamma(x, dvec), avgdigamma(y, dvec), digamma(k), digamma(len(x))
+        a, b, c, d = avgdigamma(x, dvec), avgdigamma(
+            y, dvec), digamma(k), digamma(len(x))
     else:
         xz = np.c_[x, z]
         yz = np.c_[y, z]
-        a, b, c, d = avgdigamma(xz, dvec), avgdigamma(yz, dvec), avgdigamma(z, dvec), digamma(k)
+        a, b, c, d = avgdigamma(xz, dvec), avgdigamma(
+            yz, dvec), avgdigamma(z, dvec), digamma(k)
     return (-a - b + c + d) / log(base)
 
 
@@ -100,8 +102,8 @@ def kldiv(x, xp, k=3, base=2):
     n = len(x)
     m = len(xp)
     const = log(m) - log(n - 1)
-    tree = ss.cKDTree(x)
-    treep = ss.cKDTree(xp)
+    tree = build_tree(x)
+    treep = build_tree(xp)
     nn = query_neighbors(tree, x, k)
     nnp = query_neighbors(treep, x, k - 1)
     return (const + d * (np.log(nnp).mean() - np.log(nn).mean())) / log(base)
@@ -202,7 +204,8 @@ def centropydc(x, y, k=3, base=2, warning=True):
 
 def ctcdc(xs, y, k=3, base=2, warning=True):
     xs_columns = np.expand_dims(xs, axis=0).T
-    centropy_features = [centropydc(col, y, k=k, base=base, warning=warning) for col in xs_columns]
+    centropy_features = [centropydc(
+        col, y, k=k, base=base, warning=warning) for col in xs_columns]
     return np.sum(centropy_features) - centropydc(xs, y, k, base, warning)
 
 
@@ -226,25 +229,29 @@ def add_noise(x, intens=1e-10):
 
 
 def query_neighbors(tree, x, k):
-    return tree.query(x, k=k + 1, p=float('inf'), n_jobs=-1)[0][:, k]
+    return tree.query(x, k=k + 1)[0][:, k]
+
+
+def count_neighbors(tree, x, r):
+    return tree.query_radius(x, r, count_only=True)
 
 
 def avgdigamma(points, dvec):
     # This part finds number of neighbors in some radius in the marginal space
     # returns expectation value of <psi(nx)>
-    n_elements = len(points)
-    tree = ss.cKDTree(points)
-    avg = 0.
+    tree = build_tree(points)
     dvec = dvec - 1e-15
-    for point, dist in zip(points, dvec):
-        # subtlety, we don't include the boundary point,
-        # but we are implicitly adding 1 to kraskov def bc center point is included
-        num_points = len(tree.query_ball_point(point, dist, p=float('inf')))
-        avg += digamma(num_points) / n_elements
-    return avg
+    num_points = count_neighbors(tree, points, dvec)
+    return np.mean(digamma(num_points))
 
+
+def build_tree(points):
+    if points.shape[1] >= 20:
+        return BallTree(points, metric='chebyshev')
+    return KDTree(points, metric='chebyshev')
 
 # TESTS
+
 
 def shuffle_test(measure, x, y, z=False, ns=200, ci=0.95, **kwargs):
     """ Shuffle test
