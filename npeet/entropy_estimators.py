@@ -267,4 +267,5 @@ def shuffle_test(measure, x, y, z=False, ns=200, ci=0.95, **kwargs):
 
 if __name__ == "__main__":
     print("MI between two independent continuous random variables X and Y:")
+    np.random.seed(0)
     print(mi(np.random.rand(1000, 10), np.random.rand(1000, 3), base=2))
