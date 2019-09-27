@@ -6,11 +6,13 @@
 import warnings
 
 import numpy as np
+import numpy.linalg as la
 from numpy import log
 from scipy.special import digamma
 from sklearn.neighbors import BallTree, KDTree
 
 # CONTINUOUS ESTIMATORS
+
 
 def entropy(x, k=3, base=2):
     """ The classic K-L k-nearest neighbor continuous entropy estimator
@@ -56,7 +58,7 @@ def corex(xs, ys, k=3, base=2):
     return np.sum(cmi_features) - mi(xs, ys, k=k, base=base)
 
 
-def mi(x, y, z=None, k=3, base=2):
+def mi(x, y, z=None, k=3, base=2, alpha=0):
     """ Mutual information of x and y (conditioned on z if z is not None)
         x, y should be a list of vectors, e.g. x = [[1.3], [3.7], [5.1], [2.4]]
         if x is a one-dimensional scalar and we have four samples
@@ -64,6 +66,7 @@ def mi(x, y, z=None, k=3, base=2):
     assert len(x) == len(y), "Arrays should have same length"
     assert k <= len(x) - 1, "Set k smaller than num. samples - 1"
     x, y = np.asarray(x), np.asarray(y)
+    x, y = x.reshape(x.shape[0], -1), y.reshape(y.shape[0], -1)
     x = add_noise(x)
     y = add_noise(y)
     points = [x, y]
@@ -76,6 +79,8 @@ def mi(x, y, z=None, k=3, base=2):
     if z is None:
         a, b, c, d = avgdigamma(x, dvec), avgdigamma(
             y, dvec), digamma(k), digamma(len(x))
+        if alpha > 0:
+            d += lnc_correction(tree, points, k, alpha)
     else:
         xz = np.c_[x, z]
         yz = np.c_[y, z]
@@ -107,6 +112,29 @@ def kldiv(x, xp, k=3, base=2):
     nn = query_neighbors(tree, x, k)
     nnp = query_neighbors(treep, x, k - 1)
     return (const + d * (np.log(nnp).mean() - np.log(nn).mean())) / log(base)
+
+
+def lnc_correction(tree, points, k, alpha):
+    e = 0
+    n_sample = points.shape[0]
+    for point in points:
+        # Find k-nearest neighbors in joint space, p=inf means max norm
+        knn = tree.query(point[None, :], k=k+1, return_distance=False)[0]
+        knn_points = points[knn]
+        # Substract mean of k-nearest neighbor points
+        knn_points = knn_points - knn_points[0]
+        # Calculate covariance matrix of k-nearest neighbor points, obtain eigen vectors
+        covr = knn_points.T @ knn_points / k
+        _, v = la.eig(covr)
+        # Calculate PCA-bounding box using eigen vectors
+        V_rect = np.log(np.abs(knn_points @ v).max(axis=0)).sum()
+        # Calculate the volume of original box
+        log_knn_dist = np.log(np.abs(knn_points).max(axis=0)).sum()
+
+        # Perform local non-uniformity checking and update correction term
+        if V_rect < log_knn_dist + np.log(alpha):
+            e += (log_knn_dist - V_rect) / n_sample 
+    return e
 
 
 # DISCRETE ESTIMATORS
@@ -275,4 +303,6 @@ def shuffle_test(measure, x, y, z=False, ns=200, ci=0.95, **kwargs):
 if __name__ == "__main__":
     print("MI between two independent continuous random variables X and Y:")
     np.random.seed(0)
-    print(mi(np.random.rand(1000, 10), np.random.rand(1000, 3), base=2))
+    x = np.random.randn(1000, 10)
+    y = np.random.randn(1000, 3)
+    print(mi(x, y, base=2, alpha=0))
