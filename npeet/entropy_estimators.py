@@ -71,6 +71,8 @@ def mi(x, y, z=None, k=3, base=2, alpha=0):
     y = add_noise(y)
     points = [x, y]
     if z is not None:
+        z = np.asarray(z)
+        z = z.reshape(z.shape[0], -1)
         points.append(z)
     points = np.hstack(points)
     # Find nearest neighbors in joint space, p=inf means max-norm
@@ -103,6 +105,8 @@ def kldiv(x, xp, k=3, base=2):
     """
     assert k < min(len(x), len(xp)), "Set k smaller than num. samples - 1"
     assert len(x[0]) == len(xp[0]), "Two distributions must have same dim."
+    x, xp = np.asarray(x), np.asarray(xp)
+    x, xp = x.reshape(x.shape[0], -1), xp.reshape(xp.shape[0], -1)
     d = len(x[0])
     n = len(x)
     m = len(xp)
@@ -133,7 +137,7 @@ def lnc_correction(tree, points, k, alpha):
 
         # Perform local non-uniformity checking and update correction term
         if V_rect < log_knn_dist + np.log(alpha):
-            e += (log_knn_dist - V_rect) / n_sample 
+            e += (log_knn_dist - V_rect) / n_sample
     return e
 
 
