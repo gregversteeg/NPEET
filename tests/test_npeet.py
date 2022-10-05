@@ -1,12 +1,14 @@
 #!/bin/env python
 # Testing the NPEET estimators
 
-from npeet import entropy_estimators as ee
+import random
 from math import log, pi
+
 import numpy as np
 import numpy.random as nr
-import random
 from numpy.linalg import det
+
+from npeet import entropy_estimators as ee
 
 # Some test cases to see usage and correctness
 
