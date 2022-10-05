@@ -1,0 +1,27 @@
+[project]
+name = "NPEET"
+version = "1.0.1"
+authors = [
+  { name="Greg Ver Steeg", email="greg@isi.edu" },
+]
+description = "Non-parametric Entropy Estimation Toolbox"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "scikit-learn",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/MaxwellRebo/NPEET"
+"Bug Tracker" = "https://github.com/MaxwellRebo/NPEET/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
