@@ -46,26 +46,41 @@ This prints the mutual information between column 5 and 9, conditioned on column
 
 See documentation for references on all implemented estimators.
 
-				A Kraskov, H Stögbauer, P Grassberger.
-				http://pre.aps.org/abstract/PRE/v69/i6/e066138
-				Estimating Mutual Information
-				PRE 2004.
+```latex
+@article{kraskov_estimating_2004,
+    title = {Estimating mutual information},
+    url = {https://link.aps.org/doi/10.1103/PhysRevE.69.066138},
+    doi = {10.1103/PhysRevE.69.066138},
+    journaltitle = {Physical Review E},
+    author = {Kraskov, Alexander and Stögbauer, Harald and Grassberger, Peter},
+    date = {2004-06-23},
+}
 
-				Greg Ver Steeg and Aram Galstyan
-				http://lanl.arxiv.org/abs/1208.4475
-				Information-Theoretic Measures of Influence Based on Content Dynamics
-				WSDM, 2013.
+@misc{steeg_information-theoretic_2013,
+    title = {Information-Theoretic Measures of Influence Based on Content Dynamics},
+    url = {http://arxiv.org/abs/1208.4475},
+    doi = {10.48550/arXiv.1208.4475},
+    author = {Steeg, Greg Ver and Galstyan, Aram},
+    date = {2013-02-15},
+}
 
-				Greg Ver Steeg and Aram Galstyan
-				http://arxiv.org/abs/1110.2724
-				Information Transfer in Social Media
-				WWW, 2012.
+@misc{steeg_information_2011,
+    title = {Information Transfer in Social Media},
+    url = {http://arxiv.org/abs/1110.2724},
+    doi = {10.48550/arXiv.1110.2724},
+    author = {Steeg, Greg Ver and Galstyan, Aram},
+    date = {2011-10-12},
+}%
+```
 
 The non-parametric estimators actually fare poorly for variables with strong relationships. See the following paper and the improved code available at <https://github.com/BiuBiuBiLL/NPEET_LNC>
 
-				Shuyang Gao, Greg Ver Steeg and Aram Galstyan
-				http://arxiv.org/abs/1411.2003
-				Efficient Estimation of Mutual Information for Strongly Dependent Variables
-				AISTATS, 2015.
-
-
+```latex
+@misc{gao_efficient_2015,
+    title = {Efficient Estimation of Mutual Information for Strongly Dependent Variables},
+    url = {http://arxiv.org/abs/1411.2003},
+    doi = {10.48550/arXiv.1411.2003},
+    author = {Gao, Shuyang and Steeg, Greg Ver and Galstyan, Aram},
+    date = {2015-03-05},
+}%
+```
